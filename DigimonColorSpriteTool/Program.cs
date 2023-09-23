@@ -3,7 +3,7 @@
 using DigimonColorSpriteTool;
 using System.CommandLine;
 
-const int NUM_CHARAS = 18;
+const int DEFAULT_NUM_CHARAS = 18;
 
 var rootCommand = new RootCommand("Digimon Color Sprite Import/Export Tool");
 
@@ -11,6 +11,10 @@ var rootCommand = new RootCommand("Digimon Color Sprite Import/Export Tool");
 var useGreenAsAlphaOption = new Option<bool>("--green-transparency", "Use full green pixel as transparency");
 useGreenAsAlphaOption.AddAlias("-g");
 var useBmpOption = new Option<bool>("--bmp", "Output as BMP");
+var numCharasOption = new Option<int>("--num-charas", () => DEFAULT_NUM_CHARAS, "Number of characters");
+numCharasOption.AddAlias("-c");
+var numJogressOption = new Option<int>("--num-jogress", () => 0, "Number of jogresses");
+numJogressOption.AddAlias("-j");
 
 // Arguments
 var romPathArgument = new Argument<FileInfo>("romPath", "Path to flash dump").ExistingOnly();
@@ -59,31 +63,52 @@ importCmd.SetHandler((useGreenAsAlpha, romPath, sizeTableOffset, numImages, inDi
 
 var exportSheetsCmd = new Command("export-sheets", "Export all character sprite sheets")
 {
-    useGreenAsAlphaOption, useBmpOption, romPathArgument,  sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, outDirArgument
+    useGreenAsAlphaOption, useBmpOption, numCharasOption, numJogressOption, romPathArgument,  sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, outDirArgument
 };
 rootCommand.Add(exportSheetsCmd);
 
-exportSheetsCmd.SetHandler((useGreenAsAlpha, useBmp, romPath, sizeTableOffset, numImages, charaStartIndex, outDir) =>
+exportSheetsCmd.SetHandler(context =>
 {
+    var useGreenAsAlpha = context.ParseResult.GetValueForOption(useGreenAsAlphaOption);
+    var useBmp = context.ParseResult.GetValueForOption(useBmpOption);
+    var numCharas = context.ParseResult.GetValueForOption(numCharasOption);
+    var numJogresses = context.ParseResult.GetValueForOption(numJogressOption);
+    var romPath = context.ParseResult.GetValueForArgument(romPathArgument);
+    var sizeTableOffset = context.ParseResult.GetValueForArgument(sizeTableOffsetArgument);
+    var numImages = context.ParseResult.GetValueForArgument(numImagesArgument);
+    var charaStartIndex = context.ParseResult.GetValueForArgument(charaStartIndexArgument);
+    var outDir = context.ParseResult.GetValueForArgument(outDirArgument);
+
     if (useBmp) useGreenAsAlpha = true;
     using var impExp = new ImageImportExport(romPath.OpenRead(), sizeTableOffset, numImages);
     outDir.Create();
-    impExp.ExportSpriteSheetFolder(outDir.FullName, useBmp ? ".bmp" : ".png", charaStartIndex, NUM_CHARAS, useGreenAsAlpha);
-}, useGreenAsAlphaOption, useBmpOption, romPathArgument, sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, outDirArgument);
+    impExp.ExportSpriteSheetFolder(outDir.FullName, useBmp ? ".bmp" : ".png", charaStartIndex, numCharas, useGreenAsAlpha, numJogresses);
+});
 
 var importSheetsCmd = new Command("import-sheets", "Import character sprite sheets")
 {
-    useGreenAsAlphaOption, romPathArgument, sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, inDirArgument, outFileArgument
+    useGreenAsAlphaOption, numCharasOption, numJogressOption, romPathArgument, sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, inDirArgument, outFileArgument
 };
 rootCommand.AddCommand(importSheetsCmd);
 
-importSheetsCmd.SetHandler((useGreenAsAlpha, romPath, sizeTableOffset, numImages, charaStartIndex, inDir, outFile) =>
+importSheetsCmd.SetHandler(context =>
 {
+    var useGreenAsAlpha = context.ParseResult.GetValueForOption(useGreenAsAlphaOption);
+    var useBmp = context.ParseResult.GetValueForOption(useBmpOption);
+    var numCharas = context.ParseResult.GetValueForOption(numCharasOption);
+    var numJogresses = context.ParseResult.GetValueForOption(numJogressOption);
+    var romPath = context.ParseResult.GetValueForArgument(romPathArgument);
+    var sizeTableOffset = context.ParseResult.GetValueForArgument(sizeTableOffsetArgument);
+    var numImages = context.ParseResult.GetValueForArgument(numImagesArgument);
+    var charaStartIndex = context.ParseResult.GetValueForArgument(charaStartIndexArgument);
+    var inDir = context.ParseResult.GetValueForArgument(inDirArgument);
+    var outFile = context.ParseResult.GetValueForArgument(outFileArgument);
+
     bool needCopyOverSrc = outFile == null || outFile.FullName == romPath.FullName; // Not foolproof
     if (needCopyOverSrc) outFile = new FileInfo(Path.GetTempFileName());
     using (var impExp = new ImageImportExport(romPath.OpenRead(), sizeTableOffset, numImages))
     {
-        impExp.ImportSpriteSheetFolder(inDir.FullName, charaStartIndex, NUM_CHARAS, useGreenAsAlpha);
+        impExp.ImportSpriteSheetFolder(inDir.FullName, charaStartIndex, numCharas, useGreenAsAlpha, numJogresses);
         impExp.Rebuild(outFile.FullName, useGreenAsAlpha);
     }
     if (needCopyOverSrc)
@@ -91,6 +116,6 @@ importSheetsCmd.SetHandler((useGreenAsAlpha, romPath, sizeTableOffset, numImages
         outFile.CopyTo(romPath.FullName, true);
         outFile.Delete();
     }
-}, useGreenAsAlphaOption, romPathArgument, sizeTableOffsetArgument, numImagesArgument, charaStartIndexArgument, inDirArgument, outFileArgument);
+});
 
 return rootCommand.Invoke(args);

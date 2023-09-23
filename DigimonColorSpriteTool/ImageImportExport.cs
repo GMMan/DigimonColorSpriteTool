@@ -203,7 +203,7 @@ namespace DigimonColorSpriteTool
             }
         }
 
-        public void ImportSpriteSheetFolder(string folderPath, int startImageIndex, int numCharas, bool useGreenAsAlpha)
+        public void ImportSpriteSheetFolder(string folderPath, int startImageIndex, int numCharas, bool useGreenAsAlpha, int numJogress)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
@@ -211,7 +211,9 @@ namespace DigimonColorSpriteTool
             {
                 string? filePath = FindFile(folderPath, i);
                 if (filePath == null) continue;
-                ImportSpriteSheet(filePath, startImageIndex + i * CHARA_SPRITE_NUM_FRAMES, useGreenAsAlpha);
+                if (i < numJogress) ++startImageIndex;
+                ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
+                startImageIndex += CHARA_SPRITE_NUM_FRAMES;
             }
         }
 
@@ -230,14 +232,16 @@ namespace DigimonColorSpriteTool
             sheetImg.Save(path);
         }
 
-        public void ExportSpriteSheetFolder(string folderPath, string extension, int startImageIndex, int numCharas, bool useGreenAsAlpha)
+        public void ExportSpriteSheetFolder(string folderPath, string extension, int startImageIndex, int numCharas, bool useGreenAsAlpha, int numJogress)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
             for (int i = 0; i < numCharas; ++i)
             {
                 string filePath = Path.Combine(folderPath, $"{i}{extension}");
-                ExportSpriteSheet(filePath, startImageIndex + i * CHARA_SPRITE_NUM_FRAMES, useGreenAsAlpha);
+                if (i < numJogress) ++startImageIndex;
+                ExportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
+                startImageIndex += CHARA_SPRITE_NUM_FRAMES;
             }
         }
 
