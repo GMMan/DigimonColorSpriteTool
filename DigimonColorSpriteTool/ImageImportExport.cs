@@ -177,27 +177,52 @@ namespace DigimonColorSpriteTool
             }
         }
 
-        public void ImportSpriteSheet(string path, int startImageIndex, bool useGreenAsAlpha)
+        public void ImportSpriteSheet(string path, int startImageIndex, bool useGreenAsAlpha, uint? rows, uint? cols)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException("path");
             if (startImageIndex < 0 || startImageIndex + firmwareInfo.NumFramesPerChara >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
-            using var sheetImg = Image.Load(path);
-            if (sheetImg.Width != firmwareInfo.CharaSpriteWidth) throw new ArgumentException("Image is not 48 pixels in width.", nameof(path));
-            if (sheetImg.Height % firmwareInfo.CharaSpriteHeight != 0) throw new ArgumentException("Image height is not a multiple of 48 pixels.", nameof(path));
-            if (sheetImg.Height / firmwareInfo.CharaSpriteHeight != firmwareInfo.NumFramesPerChara) throw new ArgumentException("Image does not have 15 frames.", nameof(path));
+            if (!rows.HasValue) rows = firmwareInfo.NumFramesPerChara;
+            if (!cols.HasValue) cols = 1;
+            if (rows * cols < firmwareInfo.NumFramesPerChara)
+                throw new ArgumentException("Not enough rows and cols for number of frame per character.");
 
+            using var sheetImg = Image.Load(path);
+            int sheetFrameWidth = (int)(sheetImg.Width / cols);
+            int sheetFrameHeight = (int)(sheetImg.Height / rows);
+            // Do not allow oversized sprites, even if it technically would work
+            if (sheetFrameWidth > firmwareInfo.CharaSpriteWidth || sheetFrameHeight > firmwareInfo.CharaSpriteHeight)
+                throw new ArgumentException("Sheet frame is too large for device character frame.", nameof(path));
+            if (firmwareInfo.CharaSpriteWidth % sheetFrameWidth != 0)
+                throw new ArgumentException("Sheet frame width cannot be scaled by an integral factor.", nameof(path));
+            if (firmwareInfo.CharaSpriteHeight % sheetFrameHeight != 0)
+                throw new ArgumentException("Sheet frame height cannot be scaled by an integral factor.", nameof(path));
+            int scaleFactorX = (int)(firmwareInfo.CharaSpriteWidth / sheetFrameWidth);
+            int scaleFactorY = (int)(firmwareInfo.CharaSpriteHeight / sheetFrameHeight);
+
+            int currRow = 0;
+            int currCol = 0;
             for (int i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
             {
-                using var frameImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)firmwareInfo.CharaSpriteHeight);
-                frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(0, i * -(int)firmwareInfo.CharaSpriteHeight), 1.0f));
+                using var frameImg = new Image<Rgba32>(sheetFrameWidth, sheetFrameHeight);
+                frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(-sheetFrameWidth * currCol, -sheetFrameHeight * currRow), 1.0f));
+                if (scaleFactorX != 1 || scaleFactorY != 1)
+                {
+                    frameImg.Mutate(x => x.Resize(sheetFrameWidth * scaleFactorX, sheetFrameHeight * scaleFactorY, KnownResamplers.NearestNeighbor));
+                }
                 byte[] pixels = ImageConverter.ConvertImageToRgb565(frameImg, useGreenAsAlpha);
                 imageInfos[startImageIndex + i].OverrideData = pixels;
+                ++currCol;
+                if (currCol >= cols)
+                {
+                    ++currRow;
+                    currCol = 0;
+                }
             }
         }
 
-        public void ImportSpriteSheetFolder(string folderPath, bool useGreenAsAlpha)
+        public void ImportSpriteSheetFolder(string folderPath, bool useGreenAsAlpha, uint? rows, uint? cols)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
@@ -207,7 +232,7 @@ namespace DigimonColorSpriteTool
                 string? filePath = FindFile(folderPath, i);
                 if (filePath == null) continue;
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
-                ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
+                ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols);
                 startImageIndex += (int)firmwareInfo.NumFramesPerChara;
             }
         }

@@ -11,6 +11,11 @@ useGreenAsAlphaOption.AddAlias("-g");
 var useBmpOption = new Option<bool>("--bmp", "Output as BMP");
 var numJogressOption = new Option<uint>("--num-jogress", () => 0, "Number of jogresses");
 numJogressOption.AddAlias("-j");
+var sheetRowsOption = new Option<uint?>("--sheet-rows", "Number of rows in sprite sheet");
+sheetRowsOption.AddAlias("-sr");
+var sheetColsOption = new Option<uint?>("--sheet-cols", "Number of columns in sprite sheet");
+sheetColsOption.AddAlias("-sc");
+var tortoiseshelOption = new Option<bool>("--tortoiseshel", "Use Tortoiseshel sprite sheet layout");
 
 // Arguments
 var presetNameArgument = new Argument<string>("presetName", "Device firmware preset name")
@@ -61,13 +66,13 @@ void DoExportSheets(FileInfo romFile, FirmwareInfo fwInfo, DirectoryInfo outDir,
     impExp.ExportSpriteSheetFolder(outDir.FullName, useBmp ? ".bmp" : ".png", useGreenAsAlpha);
 }
 
-void DoImportSheets(FileInfo romFile, FirmwareInfo fwInfo, DirectoryInfo inDir, FileInfo? outFile, bool useGreenAsAlpha)
+void DoImportSheets(FileInfo romFile, FirmwareInfo fwInfo, DirectoryInfo inDir, FileInfo? outFile, bool useGreenAsAlpha, uint? rows, uint? cols)
 {
     bool needCopyOverSrc = outFile == null || outFile.FullName == romFile.FullName; // Not foolproof
     if (needCopyOverSrc) outFile = new FileInfo(Path.GetTempFileName());
     using (var impExp = new ImageImportExport(romFile.OpenRead(), fwInfo))
     {
-        impExp.ImportSpriteSheetFolder(inDir.FullName, useGreenAsAlpha);
+        impExp.ImportSpriteSheetFolder(inDir.FullName, useGreenAsAlpha, rows, cols);
         impExp.Rebuild(outFile.FullName, useGreenAsAlpha);
     }
     if (needCopyOverSrc)
@@ -141,7 +146,7 @@ exportSheetsPresetCmd.SetHandler(context =>
 
 var importSheetsPresetCmd = new Command("import-sheets-preset", "Import character sprite sheets using firmware preset")
 {
-    useGreenAsAlphaOption, romPathArgument, presetNameArgument, inDirArgument, outFileArgument
+    useGreenAsAlphaOption, sheetRowsOption, sheetColsOption, tortoiseshelOption, romPathArgument, presetNameArgument, inDirArgument, outFileArgument
 };
 rootCommand.AddCommand(importSheetsPresetCmd);
 
@@ -149,14 +154,22 @@ importSheetsPresetCmd.SetHandler(context =>
 {
     var pr = context.ParseResult;
     var useGreenAsAlpha = pr.GetValueForOption(useGreenAsAlphaOption);
+    var sheetRows = pr.GetValueForOption(sheetRowsOption);
+    var sheetCols = pr.GetValueForOption(sheetColsOption);
+    var isTortoiseshel = pr.GetValueForOption(tortoiseshelOption);
     var romPath = pr.GetValueForArgument(romPathArgument);
     var presetName = pr.GetValueForArgument(presetNameArgument);
     var inDir = pr.GetValueForArgument(inDirArgument);
     var outFile = pr.GetValueForArgument(outFileArgument);
 
     var fwInfo = FirmwareInfo.Presets[presetName];
+    if (isTortoiseshel)
+    {
+        sheetRows = 4;
+        sheetCols = 3;
+    }
 
-    DoImportSheets(romPath, fwInfo, inDir, outFile, useGreenAsAlpha);
+    DoImportSheets(romPath, fwInfo, inDir, outFile, useGreenAsAlpha, sheetRows, sheetCols);
 });
 
 var showPresetCmd = new Command("show-preset", "Show the parameters of a preset")
@@ -277,9 +290,10 @@ exportSheetsCmd.SetHandler(context =>
 
 var importSheetsCmd = new Command("import-sheets", "Import character sprite sheets")
 {
-    useGreenAsAlphaOption, numJogressOption, romPathArgument, spritePackBaseArgument,
-    sizeTableOffsetArgument, numImagesArgument, numCharasArgument, numFramesPerCharaArgument,
-    charaStartIndexArgument, inDirArgument, outFileArgument
+    useGreenAsAlphaOption, numJogressOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
+    romPathArgument, spritePackBaseArgument, sizeTableOffsetArgument, numImagesArgument,
+    numCharasArgument, numFramesPerCharaArgument, charaStartIndexArgument, inDirArgument,
+    outFileArgument
 };
 rootCommand.AddCommand(importSheetsCmd);
 
@@ -288,6 +302,9 @@ importSheetsCmd.SetHandler(context =>
     var pr = context.ParseResult;
     var useGreenAsAlpha = pr.GetValueForOption(useGreenAsAlphaOption);
     var numJogresses = pr.GetValueForOption(numJogressOption);
+    var sheetRows = pr.GetValueForOption(sheetRowsOption);
+    var sheetCols = pr.GetValueForOption(sheetColsOption);
+    var isTortoiseshel = pr.GetValueForOption(tortoiseshelOption);
     var romPath = pr.GetValueForArgument(romPathArgument);
     var spritePackBase = pr.GetValueForArgument(spritePackBaseArgument);
     var sizeTableOffset = pr.GetValueForArgument(sizeTableOffsetArgument);
@@ -308,8 +325,13 @@ importSheetsCmd.SetHandler(context =>
         CharasStartIndex = charaStartIndex,
         NumJogressCharas = numJogresses
     };
+    if (isTortoiseshel)
+    {
+        sheetRows = 4;
+        sheetCols = 3;
+    }
 
-    DoImportSheets(romPath, fwInfo, inDir, outFile, useGreenAsAlpha);
+    DoImportSheets(romPath, fwInfo, inDir, outFile, useGreenAsAlpha, sheetRows, sheetCols);
 });
 #endregion
 
