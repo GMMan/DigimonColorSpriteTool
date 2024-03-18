@@ -6,6 +6,8 @@ and Pendulum Color. It also supports exporting/importing as sprite sheets for
 character sprites, and also accepts sprites with different dimensions than the
 original.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C81P4PX)
+
 Usage
 -----
 
