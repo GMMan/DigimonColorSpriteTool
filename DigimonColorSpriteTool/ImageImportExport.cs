@@ -11,10 +11,6 @@ namespace DigimonColorSpriteTool
 {
     public class ImageImportExport : IDisposable
     {
-        const int DATA_START_OFFSET = 0x80000;
-        const int CHARA_SPRITE_WIDTH = 48;
-        const int CHARA_SPRITE_HEIGHT = 48;
-        const int CHARA_SPRITE_NUM_FRAMES = 15;
         static readonly string[] FILE_NAME_PATTERNS = new[]
         {
             "{0}", "{0:d3}", "{0}_0x{0:x}"
@@ -27,26 +23,24 @@ namespace DigimonColorSpriteTool
         Stream fwStream;
         BinaryReader br;
         List<ImageInfo> imageInfos = new List<ImageInfo>();
-        int sizeTableOffset;
+        FirmwareInfo firmwareInfo;
         private bool disposedValue;
 
         public int NumImages => imageInfos.Count;
 
-        public ImageImportExport(Stream fwStream, int sizeTableOffset, int numImages)
+        public ImageImportExport(Stream fwStream, FirmwareInfo firmwareInfo)
         {
-            if (sizeTableOffset < 0) throw new ArgumentOutOfRangeException(nameof(sizeTableOffset), "Size table offset cannot be negative.");
-            if (numImages < 0) throw new ArgumentOutOfRangeException(nameof(numImages), "Number of images cannot be negative.");
             this.fwStream = fwStream ?? throw new ArgumentNullException(nameof(fwStream));
+            this.firmwareInfo = firmwareInfo ?? throw new ArgumentNullException(nameof(firmwareInfo));
             br = new BinaryReader(fwStream);
-            this.sizeTableOffset = sizeTableOffset;
-            ReadMetadata(numImages);
+            ReadMetadata();
         }
 
-        void ReadMetadata(int numImages)
+        void ReadMetadata()
         {
             // Read size table
-            fwStream.Seek(sizeTableOffset, SeekOrigin.Begin);
-            for (int i = 0; i < numImages; i++)
+            fwStream.Seek(firmwareInfo.SizeTableOffset, SeekOrigin.Begin);
+            for (int i = 0; i < firmwareInfo.NumImages; i++)
             {
                 imageInfos.Add(new ImageInfo
                 {
@@ -56,7 +50,7 @@ namespace DigimonColorSpriteTool
             }
 
             // Read offsets
-            fwStream.Seek(DATA_START_OFFSET, SeekOrigin.Begin);
+            fwStream.Seek(firmwareInfo.SpritePackBase, SeekOrigin.Begin);
             foreach (var info in imageInfos)
             {
                 info.DataOffset = br.ReadInt32();
@@ -95,7 +89,7 @@ namespace DigimonColorSpriteTool
 
         Image GetImage(ImageInfo info, bool useGreenAsAlpha)
         {
-            fwStream.Seek(DATA_START_OFFSET + info.DataOffset, SeekOrigin.Begin);
+            fwStream.Seek(firmwareInfo.SpritePackBase + info.DataOffset, SeekOrigin.Begin);
             return ImageConverter.ConvertRgb565ToImage(br.ReadBytes(info.Width * info.Height * 2), info.Width, info.Height, useGreenAsAlpha);
         }
 
@@ -132,11 +126,11 @@ namespace DigimonColorSpriteTool
 
             // Write image data
             List<int> offsets = new();
-            newStream.Seek(DATA_START_OFFSET + imageInfos.Count * 4, SeekOrigin.Begin);
+            newStream.Seek(firmwareInfo.SpritePackBase + imageInfos.Count * 4, SeekOrigin.Begin);
             int i = 0;
             foreach (var info in imageInfos)
             {
-                offsets.Add((int)(newStream.Position - DATA_START_OFFSET));
+                offsets.Add((int)(newStream.Position - firmwareInfo.SpritePackBase));
                 if (info.OverrideData != null)
                 {
                     if (info.OverrideData.Length != info.Width * info.Height * 2)
@@ -159,7 +153,7 @@ namespace DigimonColorSpriteTool
                 }
                 else
                 {
-                    fwStream.Seek(DATA_START_OFFSET + info.DataOffset, SeekOrigin.Begin);
+                    fwStream.Seek(firmwareInfo.SpritePackBase + info.DataOffset, SeekOrigin.Begin);
                     byte[] data = br.ReadBytes(info.Width * info.Height * 2);
                     bw.Write(data);
                 }
@@ -168,14 +162,14 @@ namespace DigimonColorSpriteTool
             }
 
             // Write image offsets
-            newStream.Seek(DATA_START_OFFSET, SeekOrigin.Begin);
+            newStream.Seek(firmwareInfo.SpritePackBase, SeekOrigin.Begin);
             foreach (var offset in offsets)
             {
                 bw.Write(offset);
             }
 
             // Write size table
-            newStream.Seek(sizeTableOffset, SeekOrigin.Begin);
+            newStream.Seek(firmwareInfo.SizeTableOffset, SeekOrigin.Begin);
             foreach (var info in imageInfos)
             {
                 bw.Write(info.Width);
@@ -187,33 +181,34 @@ namespace DigimonColorSpriteTool
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException("path");
-            if (startImageIndex < 0 || startImageIndex + CHARA_SPRITE_NUM_FRAMES >= imageInfos.Count)
+            if (startImageIndex < 0 || startImageIndex + firmwareInfo.NumFramesPerChara >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
             using var sheetImg = Image.Load(path);
-            if (sheetImg.Width != CHARA_SPRITE_WIDTH) throw new ArgumentException("Image is not 48 pixels in width.", nameof(path));
-            if (sheetImg.Height % CHARA_SPRITE_HEIGHT != 0) throw new ArgumentException("Image height is not a multiple of 48 pixels.", nameof(path));
-            if (sheetImg.Height / CHARA_SPRITE_HEIGHT != CHARA_SPRITE_NUM_FRAMES) throw new ArgumentException("Image does not have 15 frames.", nameof(path));
+            if (sheetImg.Width != firmwareInfo.CharaSpriteWidth) throw new ArgumentException("Image is not 48 pixels in width.", nameof(path));
+            if (sheetImg.Height % firmwareInfo.CharaSpriteHeight != 0) throw new ArgumentException("Image height is not a multiple of 48 pixels.", nameof(path));
+            if (sheetImg.Height / firmwareInfo.CharaSpriteHeight != firmwareInfo.NumFramesPerChara) throw new ArgumentException("Image does not have 15 frames.", nameof(path));
 
-            for (int i = 0; i < CHARA_SPRITE_NUM_FRAMES; ++i)
+            for (int i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
             {
-                using var frameImg = new Image<Rgba32>(CHARA_SPRITE_WIDTH, CHARA_SPRITE_HEIGHT);
-                frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(0, i * -CHARA_SPRITE_HEIGHT), 1.0f));
+                using var frameImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)firmwareInfo.CharaSpriteHeight);
+                frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(0, i * -(int)firmwareInfo.CharaSpriteHeight), 1.0f));
                 byte[] pixels = ImageConverter.ConvertImageToRgb565(frameImg, useGreenAsAlpha);
                 imageInfos[startImageIndex + i].OverrideData = pixels;
             }
         }
 
-        public void ImportSpriteSheetFolder(string folderPath, int startImageIndex, int numCharas, bool useGreenAsAlpha, int numJogress)
+        public void ImportSpriteSheetFolder(string folderPath, bool useGreenAsAlpha)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
-            for (int i = 0; i < numCharas; ++i)
+            int startImageIndex = (int)firmwareInfo.CharasStartIndex;
+            for (int i = 0; i < firmwareInfo.NumCharas; ++i)
             {
                 string? filePath = FindFile(folderPath, i);
                 if (filePath == null) continue;
-                if (i < numJogress) ++startImageIndex;
+                if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
                 ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
-                startImageIndex += CHARA_SPRITE_NUM_FRAMES;
+                startImageIndex += (int)firmwareInfo.NumFramesPerChara;
             }
         }
 
@@ -221,27 +216,28 @@ namespace DigimonColorSpriteTool
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException("path");
-            if (startImageIndex < 0 || startImageIndex + CHARA_SPRITE_NUM_FRAMES >= imageInfos.Count)
+            if (startImageIndex < 0 || startImageIndex + firmwareInfo.NumFramesPerChara >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
-            using var sheetImg = new Image<Rgba32>(CHARA_SPRITE_WIDTH, CHARA_SPRITE_HEIGHT * CHARA_SPRITE_NUM_FRAMES);
-            for (int i = 0; i < CHARA_SPRITE_NUM_FRAMES; ++i)
+            using var sheetImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)(firmwareInfo.CharaSpriteHeight * firmwareInfo.NumFramesPerChara));
+            for (int i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
             {
                 using var frameImg = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
-                sheetImg.Mutate(x => x.DrawImage(frameImg, new Point(0, i * CHARA_SPRITE_HEIGHT), 1.0f));
+                sheetImg.Mutate(x => x.DrawImage(frameImg, new Point(0, i * (int)firmwareInfo.CharaSpriteHeight), 1.0f));
             }
             sheetImg.Save(path);
         }
 
-        public void ExportSpriteSheetFolder(string folderPath, string extension, int startImageIndex, int numCharas, bool useGreenAsAlpha, int numJogress)
+        public void ExportSpriteSheetFolder(string folderPath, string extension, bool useGreenAsAlpha)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(folderPath)) throw new ArgumentNullException(nameof(folderPath));
-            for (int i = 0; i < numCharas; ++i)
+            int startImageIndex = (int)firmwareInfo.CharasStartIndex;
+            for (int i = 0; i < firmwareInfo.NumCharas; ++i)
             {
                 string filePath = Path.Combine(folderPath, $"{i}{extension}");
-                if (i < numJogress) ++startImageIndex;
+                if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
                 ExportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
-                startImageIndex += CHARA_SPRITE_NUM_FRAMES;
+                startImageIndex += (int)firmwareInfo.NumFramesPerChara;
             }
         }
 
