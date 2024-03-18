@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "DigimonColorSpriteTool": {
-      "commandName": "Project",
-      "commandLineArgs": "--green-transparency import \"C:\\projects\\digimon_color\\dumps_other\\st\\DMC_V1_RED.bin\" 38296 597 .\\test_sprites\\",
-      "workingDirectory": "C:\\projects\\digimon_color"
-    }
-  }
-}
