@@ -47,7 +47,7 @@ namespace DigimonColorSpriteTool
                     SpritePackBase = 0x80000,
                     SizeTableOffset = 38632,
                     NumImages = 628,
-                    NumCharas = 19,
+                    NumCharas = 20,
                     NumFramesPerChara = 15,
                     CharasStartIndex = 210,
                     NumJogressCharas = 0,

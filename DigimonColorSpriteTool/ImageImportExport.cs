@@ -230,9 +230,11 @@ namespace DigimonColorSpriteTool
             for (int i = 0; i < firmwareInfo.NumCharas; ++i)
             {
                 string? filePath = FindFile(folderPath, i);
-                if (filePath == null) continue;
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
-                ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols);
+                if (filePath != null)
+                {
+                    ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols);
+                }
                 startImageIndex += (int)firmwareInfo.NumFramesPerChara;
             }
         }
