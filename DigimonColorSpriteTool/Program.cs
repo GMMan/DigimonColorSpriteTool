@@ -158,6 +158,27 @@ importSheetsPresetCmd.SetHandler(context =>
 
     DoImportSheets(romPath, fwInfo, inDir, outFile, useGreenAsAlpha);
 });
+
+var showPresetCmd = new Command("show-preset", "Show the parameters of a preset")
+{
+    presetNameArgument
+};
+rootCommand.Add(showPresetCmd);
+
+showPresetCmd.SetHandler(presetName =>
+{
+    var fwInfo = FirmwareInfo.Presets[presetName];
+    Console.WriteLine($"Name: {presetName}");
+    Console.WriteLine($"{nameof(fwInfo.SpritePackBase)}: {fwInfo.SpritePackBase}");
+    Console.WriteLine($"{nameof(fwInfo.CharaSpriteWidth)}: {fwInfo.CharaSpriteWidth}");
+    Console.WriteLine($"{nameof(fwInfo.CharaSpriteHeight)}: {fwInfo.CharaSpriteHeight}");
+    Console.WriteLine($"{nameof(fwInfo.SizeTableOffset)}: {fwInfo.SizeTableOffset}");
+    Console.WriteLine($"{nameof(fwInfo.NumImages)}: {fwInfo.NumImages}");
+    Console.WriteLine($"{nameof(fwInfo.NumCharas)}: {fwInfo.NumCharas}");
+    Console.WriteLine($"{nameof(fwInfo.NumFramesPerChara)}: {fwInfo.NumFramesPerChara}");
+    Console.WriteLine($"{nameof(fwInfo.CharasStartIndex)}: {fwInfo.CharasStartIndex}");
+    Console.WriteLine($"{nameof(fwInfo.NumJogressCharas)}: {fwInfo.NumJogressCharas}");
+}, presetNameArgument);
 #endregion
 
 #region Commands without presets
