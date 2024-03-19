@@ -54,7 +54,7 @@ and reimport sheets. Same options as previous apply.
 ### Import sprite sheet
 
 ```
-DigimonColorSpriteTool.exe import-sheets-preset [options] <romPath> <version> [<outFile>]
+DigimonColorSpriteTool.exe import-sheets-preset [options] <romPath> <version> <inDir> [<outFile>]
 ```
 
 Additional options:
