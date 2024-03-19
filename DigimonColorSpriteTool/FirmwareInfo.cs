@@ -67,7 +67,7 @@ namespace DigimonColorSpriteTool
             { "dmc5", new FirmwareInfo
                 {
                     SpritePackBase = 0x80000,
-                    SizeTableOffset = 38296,
+                    SizeTableOffset = 38592,
                     NumImages = 613,
                     NumCharas = 19,
                     NumFramesPerChara = 15,
