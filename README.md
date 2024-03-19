@@ -31,7 +31,7 @@ the `--bmp` option.
 ### Inport sprites
 
 ```
-DigimonColorSpriteTool.exe export-preset [options] <romPath> <version> <inDir> [<outFile>]
+DigimonColorSpriteTool.exe import-preset [options] <romPath> <version> <inDir> [<outFile>]
 ```
 
 `inDir` is a path to the folder that contains the sprites to import. You
