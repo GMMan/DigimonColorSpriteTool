@@ -108,6 +108,39 @@ namespace DigimonColorSpriteTool
                     NumJogressCharas = 0,
                 }
             },
+            { "penc4", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 65932,
+                    NumImages = 759,
+                    NumCharas = 32,
+                    NumFramesPerChara = 12,
+                    CharasStartIndex = 240,
+                    NumJogressCharas = 0,
+                }
+            },
+            { "penc5", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 65944,
+                    NumImages = 759,
+                    NumCharas = 32,
+                    NumFramesPerChara = 12,
+                    CharasStartIndex = 240,
+                    NumJogressCharas = 0,
+                }
+            },
+            { "penc0", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 66158,
+                    NumImages = 771,
+                    NumCharas = 33,
+                    NumFramesPerChara = 12,
+                    CharasStartIndex = 240,
+                    NumJogressCharas = 0,
+                }
+            },
         };
     }
 }
