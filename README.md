@@ -20,8 +20,8 @@ DigimonColorSpriteTool.exe export-preset [options] <romPath> <version> <outDir>
 Where:
 - `romPath`: Path to flash dump
 - `version`: Flash dump version, one of `dmc1`, `dmc2`, `dmc3`, `dmc4`, `dmc5`
-  for Digimon Color versions, and `penc1`, `penc2`, `penc3` for Pendulum Color
-  versions
+  for Digimon Color versions, and `penc1`, `penc2`, `penc3`, `penc4`, `penc5`,
+  `penc0` for Pendulum Color versions
 - `outDir`: The directory to export into
 
 Files are exported as PNG files into `outDir` with transparent background.
