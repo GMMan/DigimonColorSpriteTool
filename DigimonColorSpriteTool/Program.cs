@@ -2,6 +2,7 @@
 
 using DigimonColorSpriteTool;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 
 var rootCommand = new RootCommand("Digimon Color Sprite Import/Export Tool");
 
@@ -12,10 +13,19 @@ var useBmpOption = new Option<bool>("--bmp", "Output as BMP");
 var numJogressOption = new Option<uint>("--num-jogress", () => 0, "Number of jogresses");
 numJogressOption.AddAlias("-j");
 var sheetRowsOption = new Option<uint?>("--sheet-rows", "Number of rows in sprite sheet");
+sheetRowsOption.ArgumentHelpName = "row";
 sheetRowsOption.AddAlias("-sr");
 var sheetColsOption = new Option<uint?>("--sheet-cols", "Number of columns in sprite sheet");
+sheetColsOption.ArgumentHelpName = "cols";
 sheetColsOption.AddAlias("-sc");
 var tortoiseshelOption = new Option<bool>("--tortoiseshel", "Use Tortoiseshel sprite sheet layout");
+var hasNameOption = new Option<bool>("--has-name", "Each character has a name sprite at the end");
+var numFramesPerSpecialCharaOption = new Option<uint>("--num-frames-per-special-chara", () => 0, "Number of frames for special characters");
+numFramesPerSpecialCharaOption.ArgumentHelpName = "frames";
+numFramesPerSpecialCharaOption.AddAlias("-nfs");
+var specialCharaIndexesOption = new Option<uint[]>("--special-chara", "List of special character indexes");
+specialCharaIndexesOption.ArgumentHelpName = "index";
+specialCharaIndexesOption.AddAlias("-sp");
 
 // Arguments
 var presetNameArgument = new Argument<string>("presetName", "Device firmware preset name")
@@ -126,7 +136,7 @@ importPresetCmd.SetHandler(context =>
 
 var exportSheetsPresetCmd = new Command("export-sheets-preset", "Export all character sprite sheets using firmware preset")
 {
-    useGreenAsAlphaOption, useBmpOption, romPathArgument, presetNameArgument, outDirArgument
+    useGreenAsAlphaOption, useBmpOption, specialCharaIndexesOption, romPathArgument, presetNameArgument, outDirArgument
 };
 rootCommand.Add(exportSheetsPresetCmd);
 
@@ -140,13 +150,18 @@ exportSheetsPresetCmd.SetHandler(context =>
     var outDir = pr.GetValueForArgument(outDirArgument);
 
     var fwInfo = FirmwareInfo.Presets[presetName];
+    if (pr.HasOption(specialCharaIndexesOption))
+    {
+        fwInfo.SpecialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption)!;
+    }
 
     DoExportSheets(romPath, fwInfo, outDir, useGreenAsAlpha, useBmp);
 });
 
 var importSheetsPresetCmd = new Command("import-sheets-preset", "Import character sprite sheets using firmware preset")
 {
-    useGreenAsAlphaOption, sheetRowsOption, sheetColsOption, tortoiseshelOption, romPathArgument, presetNameArgument, inDirArgument, outFileArgument
+    useGreenAsAlphaOption, specialCharaIndexesOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
+    romPathArgument, presetNameArgument, inDirArgument, outFileArgument
 };
 rootCommand.AddCommand(importSheetsPresetCmd);
 
@@ -163,6 +178,10 @@ importSheetsPresetCmd.SetHandler(context =>
     var outFile = pr.GetValueForArgument(outFileArgument);
 
     var fwInfo = FirmwareInfo.Presets[presetName];
+    if (pr.HasOption(specialCharaIndexesOption))
+    {
+        fwInfo.SpecialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption)!;
+    }
     if (isTortoiseshel)
     {
         sheetRows = 4;
@@ -191,6 +210,9 @@ showPresetCmd.SetHandler(presetName =>
     Console.WriteLine($"{nameof(fwInfo.NumFramesPerChara)}: {fwInfo.NumFramesPerChara}");
     Console.WriteLine($"{nameof(fwInfo.CharasStartIndex)}: {fwInfo.CharasStartIndex}");
     Console.WriteLine($"{nameof(fwInfo.NumJogressCharas)}: {fwInfo.NumJogressCharas}");
+    Console.WriteLine($"{nameof(fwInfo.HasName)}: {fwInfo.HasName}");
+    Console.WriteLine($"{nameof(fwInfo.NumFramesPerSpecialChara)}: {fwInfo.NumFramesPerSpecialChara}");
+    Console.WriteLine($"{nameof(fwInfo.SpecialCharaIndexes)}: [{string.Join(", ", fwInfo.SpecialCharaIndexes)}]");
 }, presetNameArgument);
 #endregion
 
@@ -253,9 +275,10 @@ importCmd.SetHandler(context =>
 
 var exportSheetsCmd = new Command("export-sheets", "Export all character sprite sheets")
 {
-    useGreenAsAlphaOption, useBmpOption, numJogressOption, romPathArgument, outDirArgument,
-    spritePackBaseArgument, sizeTableOffsetArgument, numImagesArgument, numCharasArgument,
-    numFramesPerCharaArgument, charaStartIndexArgument
+    useGreenAsAlphaOption, useBmpOption, numJogressOption, hasNameOption, numFramesPerSpecialCharaOption,
+    specialCharaIndexesOption, romPathArgument, outDirArgument, spritePackBaseArgument,
+    sizeTableOffsetArgument, numImagesArgument, numCharasArgument, numFramesPerCharaArgument,
+    charaStartIndexArgument
 };
 rootCommand.Add(exportSheetsCmd);
 
@@ -273,6 +296,9 @@ exportSheetsCmd.SetHandler(context =>
     var numCharas = pr.GetValueForArgument(numCharasArgument);
     var numFramesPerChara = pr.GetValueForArgument(numFramesPerCharaArgument);
     var charaStartIndex = pr.GetValueForArgument(charaStartIndexArgument);
+    var hasName = pr.GetValueForOption(hasNameOption);
+    var numFramesPerSpecialChara = pr.GetValueForOption(numFramesPerSpecialCharaOption);
+    var specialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption);
 
     var fwInfo = new FirmwareInfo
     {
@@ -282,7 +308,10 @@ exportSheetsCmd.SetHandler(context =>
         NumCharas = numCharas,
         NumFramesPerChara = numFramesPerChara,
         CharasStartIndex = charaStartIndex,
-        NumJogressCharas = numJogresses
+        NumJogressCharas = numJogresses,
+        HasName = hasName,
+        NumFramesPerSpecialChara = numFramesPerSpecialChara,
+        SpecialCharaIndexes = specialCharaIndexes ?? [],
     };
 
     DoExportSheets(romPath, fwInfo, outDir, useGreenAsAlpha, useBmp);
@@ -290,7 +319,8 @@ exportSheetsCmd.SetHandler(context =>
 
 var importSheetsCmd = new Command("import-sheets", "Import character sprite sheets")
 {
-    useGreenAsAlphaOption, numJogressOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
+    useGreenAsAlphaOption, numJogressOption, hasNameOption, numFramesPerSpecialCharaOption,
+    specialCharaIndexesOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
     romPathArgument, spritePackBaseArgument, sizeTableOffsetArgument, numImagesArgument,
     numCharasArgument, numFramesPerCharaArgument, charaStartIndexArgument, inDirArgument,
     outFileArgument
@@ -314,6 +344,9 @@ importSheetsCmd.SetHandler(context =>
     var charaStartIndex = pr.GetValueForArgument(charaStartIndexArgument);
     var inDir = pr.GetValueForArgument(inDirArgument);
     var outFile = pr.GetValueForArgument(outFileArgument);
+    var hasName = pr.GetValueForOption(hasNameOption);
+    var numFramesPerSpecialChara = pr.GetValueForOption(numFramesPerSpecialCharaOption);
+    var specialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption);
 
     var fwInfo = new FirmwareInfo
     {
@@ -323,7 +356,10 @@ importSheetsCmd.SetHandler(context =>
         NumCharas = numCharas,
         NumFramesPerChara = numFramesPerChara,
         CharasStartIndex = charaStartIndex,
-        NumJogressCharas = numJogresses
+        NumJogressCharas = numJogresses,
+        HasName = hasName,
+        NumFramesPerSpecialChara = numFramesPerSpecialChara,
+        SpecialCharaIndexes = specialCharaIndexes ?? [],
     };
     if (isTortoiseshel)
     {

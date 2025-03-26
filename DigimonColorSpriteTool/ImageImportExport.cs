@@ -11,14 +11,15 @@ namespace DigimonColorSpriteTool
 {
     public class ImageImportExport : IDisposable
     {
-        static readonly string[] FILE_NAME_PATTERNS = new[]
-        {
+        static readonly string[] FILE_NAME_PATTERNS =
+        [
             "{0}", "{0:d3}", "{0}_0x{0:x}"
-        };
-        static readonly string[] FILE_EXTENSIONS = new[]
-        {
+        ];
+        static readonly string[] FILE_EXTENSIONS =
+        [
             ".png", ".bmp"
-        };
+        ];
+        static readonly string NAME_SUFFIX = "_name";
 
         Stream fwStream;
         BinaryReader br;
@@ -177,15 +178,16 @@ namespace DigimonColorSpriteTool
             }
         }
 
-        public void ImportSpriteSheet(string path, int startImageIndex, bool useGreenAsAlpha, uint? rows, uint? cols)
+        public void ImportSpriteSheet(string path, int startImageIndex, bool useGreenAsAlpha, uint? rows, uint? cols, bool isSpecial)
         {
             CheckDisposed();
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException("path");
-            if (startImageIndex < 0 || startImageIndex + firmwareInfo.NumFramesPerChara >= imageInfos.Count)
+            uint numFrames = isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara;
+            if (startImageIndex < 0 || startImageIndex + numFrames >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
-            if (!rows.HasValue) rows = firmwareInfo.NumFramesPerChara;
+            if (!rows.HasValue) rows = numFrames;
             if (!cols.HasValue) cols = 1;
-            if (rows * cols < firmwareInfo.NumFramesPerChara)
+            if (rows * cols < numFrames)
                 throw new ArgumentException("Not enough rows and cols for number of frame per character.");
 
             using var sheetImg = Image.Load(path);
@@ -203,7 +205,7 @@ namespace DigimonColorSpriteTool
 
             int currRow = 0;
             int currCol = 0;
-            for (int i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
+            for (int i = 0; i < numFrames; ++i)
             {
                 using var frameImg = new Image<Rgba32>(sheetFrameWidth, sheetFrameHeight);
                 frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(-sheetFrameWidth * currCol, -sheetFrameHeight * currRow), 1.0f));
@@ -220,6 +222,20 @@ namespace DigimonColorSpriteTool
                     currCol = 0;
                 }
             }
+
+            if (firmwareInfo.HasName)
+            {
+                string namePath = $"{Path.ChangeExtension(path, null)}{NAME_SUFFIX}{Path.GetExtension(path)}";
+                if (File.Exists(namePath))
+                {
+                    using var nameImg = Image.Load(namePath);
+                    byte[] pixels = ImageConverter.ConvertImageToRgb565(nameImg, useGreenAsAlpha);
+                    var nameInfo = imageInfos[(int)(startImageIndex + numFrames)];
+                    nameInfo.OverrideData = pixels;
+                    nameInfo.Width = (ushort)nameImg.Width;
+                    nameInfo.Height = (ushort)nameImg.Height;
+                }
+            }
         }
 
         public void ImportSpriteSheetFolder(string folderPath, bool useGreenAsAlpha, uint? rows, uint? cols)
@@ -230,28 +246,38 @@ namespace DigimonColorSpriteTool
             for (int i = 0; i < firmwareInfo.NumCharas; ++i)
             {
                 string? filePath = FindFile(folderPath, i);
+                bool isSpecial = Array.IndexOf(firmwareInfo.SpecialCharaIndexes, (uint)i) != -1;
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
                 if (filePath != null)
                 {
-                    ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols);
+                    ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols, isSpecial);
                 }
-                startImageIndex += (int)firmwareInfo.NumFramesPerChara;
+                startImageIndex += (int)(isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara);
+                if (firmwareInfo.HasName) ++startImageIndex;
             }
         }
 
-        public void ExportSpriteSheet(string path, int startImageIndex, bool useGreenAsAlpha)
+        public void ExportSpriteSheet(string basePath, string extension, int startImageIndex, bool useGreenAsAlpha, bool isSpecial)
         {
             CheckDisposed();
-            if (string.IsNullOrEmpty(path)) throw new ArgumentNullException("path");
-            if (startImageIndex < 0 || startImageIndex + firmwareInfo.NumFramesPerChara >= imageInfos.Count)
+            if (string.IsNullOrEmpty(basePath)) throw new ArgumentNullException(nameof(basePath));
+            if (string.IsNullOrEmpty(extension)) throw new ArgumentNullException(nameof(extension));
+            uint numFrames = isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara;
+            if (startImageIndex < 0 || startImageIndex + numFrames >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
-            using var sheetImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)(firmwareInfo.CharaSpriteHeight * firmwareInfo.NumFramesPerChara));
-            for (int i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
+            using var sheetImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)(firmwareInfo.CharaSpriteHeight * numFrames));
+            for (int i = 0; i < numFrames; ++i)
             {
                 using var frameImg = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
                 sheetImg.Mutate(x => x.DrawImage(frameImg, new Point(0, i * (int)firmwareInfo.CharaSpriteHeight), 1.0f));
             }
-            sheetImg.Save(path);
+            sheetImg.Save(basePath + extension);
+
+            if (firmwareInfo.HasName)
+            {
+                using var nameSprite = GetImage(imageInfos[(int)(startImageIndex + numFrames)], useGreenAsAlpha);
+                nameSprite.Save($"{basePath}{NAME_SUFFIX}{extension}");
+            }
         }
 
         public void ExportSpriteSheetFolder(string folderPath, string extension, bool useGreenAsAlpha)
@@ -261,10 +287,12 @@ namespace DigimonColorSpriteTool
             int startImageIndex = (int)firmwareInfo.CharasStartIndex;
             for (int i = 0; i < firmwareInfo.NumCharas; ++i)
             {
-                string filePath = Path.Combine(folderPath, $"{i}{extension}");
+                string filePath = Path.Combine(folderPath, $"{i}");
+                bool isSpecial = Array.IndexOf(firmwareInfo.SpecialCharaIndexes, (uint)i) != -1;
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
-                ExportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha);
-                startImageIndex += (int)firmwareInfo.NumFramesPerChara;
+                ExportSpriteSheet(filePath, extension, startImageIndex, useGreenAsAlpha, isSpecial);
+                startImageIndex += (int)(isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara);
+                if (firmwareInfo.HasName) ++startImageIndex;
             }
         }
 

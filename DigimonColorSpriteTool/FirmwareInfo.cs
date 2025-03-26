@@ -17,6 +17,9 @@ namespace DigimonColorSpriteTool
         public uint NumFramesPerChara { get; set; }
         public uint CharasStartIndex { get; set; }
         public uint NumJogressCharas { get; set; }
+        public bool HasName { get; set; }
+        public uint NumFramesPerSpecialChara { get; set; }
+        public uint[] SpecialCharaIndexes { get; set; } = [];
 
         public static readonly Dictionary<string, FirmwareInfo> Presets = new()
         {
@@ -73,6 +76,20 @@ namespace DigimonColorSpriteTool
                     NumFramesPerChara = 15,
                     CharasStartIndex = 210,
                     NumJogressCharas = 2,
+                }
+            },
+            { "dmcmh", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 49662,
+                    NumImages = 938,
+                    NumCharas = 38,
+                    NumFramesPerChara = 15,
+                    CharasStartIndex = 200,
+                    NumJogressCharas = 0,
+                    HasName = true,
+                    NumFramesPerSpecialChara = 20,
+                    SpecialCharaIndexes = [29, 31, 34]
                 }
             },
             { "penc1", new FirmwareInfo
