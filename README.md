@@ -19,7 +19,7 @@ DigimonColorSpriteTool.exe export-preset [options] <romPath> <version> <outDir>
 
 Where:
 - `romPath`: Path to flash dump
-- `version`: Flash dump version, one of `dmc1`, `dmc2`, `dmc3`, `dmc4`, `dmc5`, `dmcmh`
+- `version`: Flash dump version, one of `dmc1`, `dmc2`, `dmc3`, `dmc4`, `dmc5`, `dmcmh`, `dmcgz`
   for Digimon Color versions, and `penc1`, `penc2`, `penc3`, `penc4`, `penc5`,
   `penc0` for Pendulum Color versions
 - `outDir`: The directory to export into
@@ -85,6 +85,21 @@ with one or more `-sp` options followed by the index. For example, if index 0,
 2, and 9 are special, you would add the options `-sp 0 -sp 2 -sp 9`. This option
 is available for sprite sheet related commands: `export-sheets-preset`,
 `import-sheets-preset`, `export-sheets`, `import-sheets`.
+
+### Cut-ins
+
+For devices that support cut-ins, they are placed after regular sprites and
+also after special sprites. If the character is not special, the exported name
+for sprite sheets will have the character index plus `_cutin` appended for the
+name. If the character is special, the above applies, plus an additional
+0-based index is added to the name, which corresponds to its location within
+the sprite order.
+
+Example: for a special character with index `0`, you will get `0.png`,
+`0_cutin0.png`, and `0_cutin1.png`.
+
+When counting number of sprites for specifying on the command line, do not
+include cut-ins or names in the count.
 
 ### Non-preset commands
 

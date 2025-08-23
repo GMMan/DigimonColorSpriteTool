@@ -18,6 +18,7 @@ namespace DigimonColorSpriteTool
         public uint CharasStartIndex { get; set; }
         public uint NumJogressCharas { get; set; }
         public bool HasName { get; set; }
+        public bool HasCutin { get; set; }
         public uint NumFramesPerSpecialChara { get; set; }
         public uint[] SpecialCharaIndexes { get; set; } = [];
 
@@ -90,6 +91,20 @@ namespace DigimonColorSpriteTool
                     HasName = true,
                     NumFramesPerSpecialChara = 20,
                     SpecialCharaIndexes = [29, 31, 34]
+                }
+            },
+            { "dmcgz", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 49148,
+                    NumImages = 853,
+                    NumCharas = 34,
+                    NumFramesPerChara = 13,
+                    CharasStartIndex = 219,
+                    NumJogressCharas = 0,
+                    HasCutin = true,
+                    NumFramesPerSpecialChara = 18,
+                    SpecialCharaIndexes = [6, 15, 16, 25, 29]
                 }
             },
             { "penc1", new FirmwareInfo

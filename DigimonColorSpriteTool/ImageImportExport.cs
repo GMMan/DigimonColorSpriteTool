@@ -20,12 +20,15 @@ namespace DigimonColorSpriteTool
             ".png", ".bmp"
         ];
         static readonly string NAME_SUFFIX = "_name";
+        static readonly string CUTIN_SUFFIX = "_cutin";
 
         Stream fwStream;
         BinaryReader br;
         List<ImageInfo> imageInfos = new List<ImageInfo>();
         FirmwareInfo firmwareInfo;
         private bool disposedValue;
+        List<ImageType> imageTypes = new();
+        List<ImageType> specialImageTypes = new();
 
         public int NumImages => imageInfos.Count;
 
@@ -35,6 +38,7 @@ namespace DigimonColorSpriteTool
             this.firmwareInfo = firmwareInfo ?? throw new ArgumentNullException(nameof(firmwareInfo));
             br = new BinaryReader(fwStream);
             ReadMetadata();
+            BuildImageTypes();
         }
 
         void ReadMetadata()
@@ -55,6 +59,39 @@ namespace DigimonColorSpriteTool
             foreach (var info in imageInfos)
             {
                 info.DataOffset = br.ReadInt32();
+            }
+        }
+
+        void BuildImageTypes()
+        {
+            int i;
+            for (i = 0; i < firmwareInfo.NumFramesPerChara; ++i)
+            {
+                imageTypes.Add(ImageType.CharacterSprite);
+            }
+            if (firmwareInfo.HasCutin)
+            {
+                imageTypes.Add(ImageType.Cutin);
+            }
+            if (firmwareInfo.NumFramesPerSpecialChara > firmwareInfo.NumFramesPerChara)
+            {
+                specialImageTypes.AddRange(imageTypes);
+                for (; i < firmwareInfo.NumFramesPerSpecialChara; ++i)
+                {
+                    specialImageTypes.Add(ImageType.CharacterSprite);
+                }
+                if (firmwareInfo.HasCutin)
+                {
+                    specialImageTypes.Add(ImageType.Cutin);
+                }
+                if (firmwareInfo.HasName)
+                {
+                    specialImageTypes.Add(ImageType.Name);
+                }
+            }
+            if (firmwareInfo.HasName)
+            {
+                imageTypes.Add(ImageType.Name);
             }
         }
 
@@ -203,37 +240,66 @@ namespace DigimonColorSpriteTool
             int scaleFactorX = (int)(firmwareInfo.CharaSpriteWidth / sheetFrameWidth);
             int scaleFactorY = (int)(firmwareInfo.CharaSpriteHeight / sheetFrameHeight);
 
+            List<ImageType> allImageTypes = isSpecial ? specialImageTypes : imageTypes;
             int currRow = 0;
             int currCol = 0;
-            for (int i = 0; i < numFrames; ++i)
+            int cutinIndex = 0;
+            for (int i = 0; i < allImageTypes.Count; ++i)
             {
-                using var frameImg = new Image<Rgba32>(sheetFrameWidth, sheetFrameHeight);
-                frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(-sheetFrameWidth * currCol, -sheetFrameHeight * currRow), 1.0f));
-                if (scaleFactorX != 1 || scaleFactorY != 1)
+                switch (allImageTypes[i])
                 {
-                    frameImg.Mutate(x => x.Resize(sheetFrameWidth * scaleFactorX, sheetFrameHeight * scaleFactorY, KnownResamplers.NearestNeighbor));
-                }
-                byte[] pixels = ImageConverter.ConvertImageToRgb565(frameImg, useGreenAsAlpha);
-                imageInfos[startImageIndex + i].OverrideData = pixels;
-                ++currCol;
-                if (currCol >= cols)
-                {
-                    ++currRow;
-                    currCol = 0;
-                }
-            }
+                    case ImageType.CharacterSprite:
+                        {
+                            using var frameImg = new Image<Rgba32>(sheetFrameWidth, sheetFrameHeight);
+                            frameImg.Mutate(x => x.DrawImage(sheetImg, new Point(-sheetFrameWidth * currCol, -sheetFrameHeight * currRow), 1.0f));
+                            if (scaleFactorX != 1 || scaleFactorY != 1)
+                            {
+                                frameImg.Mutate(x => x.Resize(sheetFrameWidth * scaleFactorX, sheetFrameHeight * scaleFactorY, KnownResamplers.NearestNeighbor));
+                            }
+                            byte[] pixels = ImageConverter.ConvertImageToRgb565(frameImg, useGreenAsAlpha);
+                            imageInfos[startImageIndex + i].OverrideData = pixels;
+                            ++currCol;
+                            if (currCol >= cols)
+                            {
+                                ++currRow;
+                                currCol = 0;
+                            }
+                            break;
 
-            if (firmwareInfo.HasName)
-            {
-                string namePath = $"{Path.ChangeExtension(path, null)}{NAME_SUFFIX}{Path.GetExtension(path)}";
-                if (File.Exists(namePath))
-                {
-                    using var nameImg = Image.Load(namePath);
-                    byte[] pixels = ImageConverter.ConvertImageToRgb565(nameImg, useGreenAsAlpha);
-                    var nameInfo = imageInfos[(int)(startImageIndex + numFrames)];
-                    nameInfo.OverrideData = pixels;
-                    nameInfo.Width = (ushort)nameImg.Width;
-                    nameInfo.Height = (ushort)nameImg.Height;
+                        }
+                    case ImageType.Cutin:
+                        {
+                            string cutinName = CUTIN_SUFFIX;
+                            if (isSpecial)
+                            {
+                                cutinName += cutinIndex++;
+                            }
+                            string cutinPath = $"{Path.ChangeExtension(path, null)}{cutinName}{Path.GetExtension(path)}";
+                            if (File.Exists(cutinPath))
+                            {
+                                using var cutinImg = Image.Load(cutinPath);
+                                byte[] pixels = ImageConverter.ConvertImageToRgb565(cutinImg, useGreenAsAlpha);
+                                var nameInfo = imageInfos[startImageIndex + i];
+                                nameInfo.OverrideData = pixels;
+                                nameInfo.Width = (ushort)cutinImg.Width;
+                                nameInfo.Height = (ushort)cutinImg.Height;
+                            }
+                        }
+                        break;
+                    case ImageType.Name:
+                        {
+                            string namePath = $"{Path.ChangeExtension(path, null)}{NAME_SUFFIX}{Path.GetExtension(path)}";
+                            if (File.Exists(namePath))
+                            {
+                                using var nameImg = Image.Load(namePath);
+                                byte[] pixels = ImageConverter.ConvertImageToRgb565(nameImg, useGreenAsAlpha);
+                                var nameInfo = imageInfos[startImageIndex + i];
+                                nameInfo.OverrideData = pixels;
+                                nameInfo.Width = (ushort)nameImg.Width;
+                                nameInfo.Height = (ushort)nameImg.Height;
+                            }
+                        }
+                        break;
                 }
             }
         }
@@ -252,8 +318,7 @@ namespace DigimonColorSpriteTool
                 {
                     ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols, isSpecial);
                 }
-                startImageIndex += (int)(isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara);
-                if (firmwareInfo.HasName) ++startImageIndex;
+                startImageIndex += isSpecial ? specialImageTypes.Count : imageTypes.Count;
             }
         }
 
@@ -266,18 +331,39 @@ namespace DigimonColorSpriteTool
             if (startImageIndex < 0 || startImageIndex + numFrames >= imageInfos.Count)
                 throw new ArgumentOutOfRangeException(nameof(startImageIndex), "Invalid start image index.");
             using var sheetImg = new Image<Rgba32>((int)firmwareInfo.CharaSpriteWidth, (int)(firmwareInfo.CharaSpriteHeight * numFrames));
-            for (int i = 0; i < numFrames; ++i)
+
+            List<ImageType> allImageTypes = isSpecial ? specialImageTypes : imageTypes;
+            int cutinIndex = 0;
+            for (int i = 0; i < allImageTypes.Count; ++i)
             {
-                using var frameImg = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
-                sheetImg.Mutate(x => x.DrawImage(frameImg, new Point(0, i * (int)firmwareInfo.CharaSpriteHeight), 1.0f));
+                switch (allImageTypes[i])
+                {
+                    case ImageType.CharacterSprite:
+                        {
+                            using var frameImg = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
+                            sheetImg.Mutate(x => x.DrawImage(frameImg, new Point(0, (i - cutinIndex) * (int)firmwareInfo.CharaSpriteHeight), 1.0f));
+                        }
+                        break;
+                    case ImageType.Cutin:
+                        {
+                            string cutinName = CUTIN_SUFFIX;
+                            if (isSpecial)
+                            {
+                                cutinName += cutinIndex++;
+                            }
+                            using var cutinSprite = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
+                            cutinSprite.Save($"{basePath}{cutinName}{extension}");
+                        }
+                        break;
+                    case ImageType.Name:
+                        {
+                            using var nameSprite = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
+                            nameSprite.Save($"{basePath}{NAME_SUFFIX}{extension}");
+                        }
+                        break;
+                }
             }
             sheetImg.Save(basePath + extension);
-
-            if (firmwareInfo.HasName)
-            {
-                using var nameSprite = GetImage(imageInfos[(int)(startImageIndex + numFrames)], useGreenAsAlpha);
-                nameSprite.Save($"{basePath}{NAME_SUFFIX}{extension}");
-            }
         }
 
         public void ExportSpriteSheetFolder(string folderPath, string extension, bool useGreenAsAlpha)
@@ -291,8 +377,7 @@ namespace DigimonColorSpriteTool
                 bool isSpecial = Array.IndexOf(firmwareInfo.SpecialCharaIndexes, (uint)i) != -1;
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
                 ExportSpriteSheet(filePath, extension, startImageIndex, useGreenAsAlpha, isSpecial);
-                startImageIndex += (int)(isSpecial ? firmwareInfo.NumFramesPerSpecialChara : firmwareInfo.NumFramesPerChara);
-                if (firmwareInfo.HasName) ++startImageIndex;
+                startImageIndex += isSpecial ? specialImageTypes.Count : imageTypes.Count;
             }
         }
 
