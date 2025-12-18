@@ -20,12 +20,17 @@ sheetColsOption.ArgumentHelpName = "cols";
 sheetColsOption.AddAlias("-sc");
 var tortoiseshelOption = new Option<bool>("--tortoiseshel", "Use Tortoiseshel sprite sheet layout");
 var hasNameOption = new Option<bool>("--has-name", "Each character has a name sprite at the end");
+var hasCutinOption = new Option<bool>("--has-cutin", "Each character has a cut-in");
+var omitSpecialCutinOption = new Option<bool>("--omit-special-cutin", "Omit cut-in after special character frames");
 var numFramesPerSpecialCharaOption = new Option<uint>("--num-frames-per-special-chara", () => 0, "Number of frames for special characters");
 numFramesPerSpecialCharaOption.ArgumentHelpName = "frames";
 numFramesPerSpecialCharaOption.AddAlias("-nfs");
 var specialCharaIndexesOption = new Option<uint[]>("--special-chara", "List of special character indexes");
 specialCharaIndexesOption.ArgumentHelpName = "index";
 specialCharaIndexesOption.AddAlias("-sp");
+var pendulumNameStartOption = new Option<uint>("--pendulum-name-start", "First name sprite index on Pendulum Color that supports names in album");
+pendulumNameStartOption.ArgumentHelpName = "index";
+pendulumNameStartOption.AddAlias("-pns");
 
 // Arguments
 var presetNameArgument = new Argument<string>("presetName", "Device firmware preset name")
@@ -211,8 +216,11 @@ showPresetCmd.SetHandler(presetName =>
     Console.WriteLine($"{nameof(fwInfo.CharasStartIndex)}: {fwInfo.CharasStartIndex}");
     Console.WriteLine($"{nameof(fwInfo.NumJogressCharas)}: {fwInfo.NumJogressCharas}");
     Console.WriteLine($"{nameof(fwInfo.HasName)}: {fwInfo.HasName}");
+    Console.WriteLine($"{nameof(fwInfo.HasCutin)}: {fwInfo.HasCutin}");
+    Console.WriteLine($"{nameof(fwInfo.OmitSpecialCutin)}: {fwInfo.OmitSpecialCutin}");
     Console.WriteLine($"{nameof(fwInfo.NumFramesPerSpecialChara)}: {fwInfo.NumFramesPerSpecialChara}");
     Console.WriteLine($"{nameof(fwInfo.SpecialCharaIndexes)}: [{string.Join(", ", fwInfo.SpecialCharaIndexes)}]");
+    Console.WriteLine($"{nameof(fwInfo.PendulumNameStart)}: {fwInfo.PendulumNameStart}");
 }, presetNameArgument);
 #endregion
 
@@ -275,8 +283,8 @@ importCmd.SetHandler(context =>
 
 var exportSheetsCmd = new Command("export-sheets", "Export all character sprite sheets")
 {
-    useGreenAsAlphaOption, useBmpOption, numJogressOption, hasNameOption, numFramesPerSpecialCharaOption,
-    specialCharaIndexesOption, romPathArgument, outDirArgument, spritePackBaseArgument,
+    useGreenAsAlphaOption, useBmpOption, numJogressOption, hasNameOption, hasCutinOption, omitSpecialCutinOption, numFramesPerSpecialCharaOption,
+    specialCharaIndexesOption, pendulumNameStartOption, romPathArgument, outDirArgument, spritePackBaseArgument,
     sizeTableOffsetArgument, numImagesArgument, numCharasArgument, numFramesPerCharaArgument,
     charaStartIndexArgument
 };
@@ -297,6 +305,8 @@ exportSheetsCmd.SetHandler(context =>
     var numFramesPerChara = pr.GetValueForArgument(numFramesPerCharaArgument);
     var charaStartIndex = pr.GetValueForArgument(charaStartIndexArgument);
     var hasName = pr.GetValueForOption(hasNameOption);
+    var hasCutin = pr.GetValueForOption(hasCutinOption);
+    var omitSpecialCutin = pr.GetValueForOption(omitSpecialCutinOption);
     var numFramesPerSpecialChara = pr.GetValueForOption(numFramesPerSpecialCharaOption);
     var specialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption);
 
@@ -310,17 +320,24 @@ exportSheetsCmd.SetHandler(context =>
         CharasStartIndex = charaStartIndex,
         NumJogressCharas = numJogresses,
         HasName = hasName,
+        HasCutin = hasCutin,
+        OmitSpecialCutin = omitSpecialCutin,
         NumFramesPerSpecialChara = numFramesPerSpecialChara,
         SpecialCharaIndexes = specialCharaIndexes ?? [],
     };
+
+    if (pr.HasOption(pendulumNameStartOption))
+    {
+        fwInfo.PendulumNameStart = pr.GetValueForOption(pendulumNameStartOption);
+    }
 
     DoExportSheets(romPath, fwInfo, outDir, useGreenAsAlpha, useBmp);
 });
 
 var importSheetsCmd = new Command("import-sheets", "Import character sprite sheets")
 {
-    useGreenAsAlphaOption, numJogressOption, hasNameOption, numFramesPerSpecialCharaOption,
-    specialCharaIndexesOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
+    useGreenAsAlphaOption, numJogressOption, hasNameOption, hasCutinOption, omitSpecialCutinOption, numFramesPerSpecialCharaOption,
+    specialCharaIndexesOption, pendulumNameStartOption, sheetRowsOption, sheetColsOption, tortoiseshelOption,
     romPathArgument, spritePackBaseArgument, sizeTableOffsetArgument, numImagesArgument,
     numCharasArgument, numFramesPerCharaArgument, charaStartIndexArgument, inDirArgument,
     outFileArgument
@@ -345,6 +362,8 @@ importSheetsCmd.SetHandler(context =>
     var inDir = pr.GetValueForArgument(inDirArgument);
     var outFile = pr.GetValueForArgument(outFileArgument);
     var hasName = pr.GetValueForOption(hasNameOption);
+    var hasCutin = pr.GetValueForOption(hasCutinOption);
+    var omitSpecialCutin = pr.GetValueForOption(omitSpecialCutinOption);
     var numFramesPerSpecialChara = pr.GetValueForOption(numFramesPerSpecialCharaOption);
     var specialCharaIndexes = pr.GetValueForOption(specialCharaIndexesOption);
 
@@ -358,9 +377,17 @@ importSheetsCmd.SetHandler(context =>
         CharasStartIndex = charaStartIndex,
         NumJogressCharas = numJogresses,
         HasName = hasName,
+        HasCutin = hasCutin,
+        OmitSpecialCutin = omitSpecialCutin,
         NumFramesPerSpecialChara = numFramesPerSpecialChara,
         SpecialCharaIndexes = specialCharaIndexes ?? [],
     };
+
+    if (pr.HasOption(pendulumNameStartOption))
+    {
+        fwInfo.PendulumNameStart = pr.GetValueForOption(pendulumNameStartOption);
+    }
+
     if (isTortoiseshel)
     {
         sheetRows = 4;

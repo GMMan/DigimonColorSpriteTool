@@ -19,8 +19,10 @@ namespace DigimonColorSpriteTool
         public uint NumJogressCharas { get; set; }
         public bool HasName { get; set; }
         public bool HasCutin { get; set; }
+        public bool OmitSpecialCutin { get; set; }
         public uint NumFramesPerSpecialChara { get; set; }
         public uint[] SpecialCharaIndexes { get; set; } = [];
+        public uint? PendulumNameStart { get; set; }
 
         public static readonly Dictionary<string, FirmwareInfo> Presets = new()
         {
@@ -171,6 +173,38 @@ namespace DigimonColorSpriteTool
                     NumFramesPerChara = 12,
                     CharasStartIndex = 240,
                     NumJogressCharas = 0,
+                }
+            },
+            { "penc6", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 72568,
+                    NumImages = 829,
+                    NumCharas = 31,
+                    NumFramesPerChara = 12,
+                    CharasStartIndex = 246,
+                    NumJogressCharas = 0,
+                    HasCutin = true,
+                    OmitSpecialCutin = true,
+                    NumFramesPerSpecialChara = 16,
+                    SpecialCharaIndexes = [22, 25, 28],
+                    PendulumNameStart = 662,
+                }
+            },
+            { "penc7", new FirmwareInfo
+                {
+                    SpritePackBase = 0x400000,
+                    SizeTableOffset = 72456,
+                    NumImages = 821,
+                    NumCharas = 31,
+                    NumFramesPerChara = 12,
+                    CharasStartIndex = 246,
+                    NumJogressCharas = 0,
+                    HasCutin = true,
+                    OmitSpecialCutin = true,
+                    NumFramesPerSpecialChara = 16,
+                    SpecialCharaIndexes = [23],
+                    PendulumNameStart = 654
                 }
             },
         };

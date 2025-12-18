@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -80,7 +81,7 @@ namespace DigimonColorSpriteTool
                 {
                     specialImageTypes.Add(ImageType.CharacterSprite);
                 }
-                if (firmwareInfo.HasCutin)
+                if (firmwareInfo.HasCutin && !firmwareInfo.OmitSpecialCutin)
                 {
                     specialImageTypes.Add(ImageType.Cutin);
                 }
@@ -319,6 +320,20 @@ namespace DigimonColorSpriteTool
                     ImportSpriteSheet(filePath, startImageIndex, useGreenAsAlpha, rows, cols, isSpecial);
                 }
                 startImageIndex += isSpecial ? specialImageTypes.Count : imageTypes.Count;
+
+                if (firmwareInfo.PendulumNameStart is uint nameStart)
+                {
+                    string namePath = $"{Path.ChangeExtension(filePath, null)}{NAME_SUFFIX}{Path.GetExtension(filePath)}";
+                    if (File.Exists(namePath))
+                    {
+                        using var nameImg = Image.Load(namePath);
+                        byte[] pixels = ImageConverter.ConvertImageToRgb565(nameImg, useGreenAsAlpha);
+                        var nameInfo = imageInfos[(int)(nameStart + i)];
+                        nameInfo.OverrideData = pixels;
+                        nameInfo.Width = (ushort)nameImg.Width;
+                        nameInfo.Height = (ushort)nameImg.Height;
+                    }
+                }
             }
         }
 
@@ -378,6 +393,12 @@ namespace DigimonColorSpriteTool
                 if (i < firmwareInfo.NumJogressCharas) ++startImageIndex;
                 ExportSpriteSheet(filePath, extension, startImageIndex, useGreenAsAlpha, isSpecial);
                 startImageIndex += isSpecial ? specialImageTypes.Count : imageTypes.Count;
+
+                if (firmwareInfo.PendulumNameStart is uint nameStart)
+                {
+                    using var nameSprite = GetImage(imageInfos[(int)(nameStart + i)], useGreenAsAlpha);
+                    nameSprite.Save($"{filePath}{NAME_SUFFIX}{extension}");
+                }
             }
         }
 

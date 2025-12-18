@@ -121,9 +121,14 @@ follows:
   interspersed before full set characters, indicate the number of such jogress
   characters. Do not include jogress characters after full set characters
 - `--has-name`: Each character has a name sprite following the character frames
+- `--has-cutin`: Each character has a cut-in following the character frames
+- `--omit-special-cutin`: Indicates that there is no cut-in following special
+  character frames. Set for Pendulum Color that supports mode change
 - `-nfs`: Number of frames for special characters
 - `-sp`: Specifies the index of a special character. Can be repeated multiple
   times
+- `-pns`: Specifies the starting index of name sprites for Pendulum Color that
+  supports showing names in the album
 
 You can print the values for those arguments from presets using the
 `show-preset` command:
