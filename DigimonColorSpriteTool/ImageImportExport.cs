@@ -271,7 +271,7 @@ namespace DigimonColorSpriteTool
                     case ImageType.Cutin:
                         {
                             string cutinName = CUTIN_SUFFIX;
-                            if (isSpecial)
+                            if (isSpecial && !firmwareInfo.OmitSpecialCutin)
                             {
                                 cutinName += cutinIndex++;
                             }
@@ -362,7 +362,7 @@ namespace DigimonColorSpriteTool
                     case ImageType.Cutin:
                         {
                             string cutinName = CUTIN_SUFFIX;
-                            if (isSpecial)
+                            if (isSpecial && !firmwareInfo.OmitSpecialCutin)
                             {
                                 cutinName += cutinIndex++;
                             }
