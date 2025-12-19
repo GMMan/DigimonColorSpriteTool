@@ -19,14 +19,14 @@ DigimonColorSpriteTool.exe export-preset [options] <romPath> <version> <outDir>
 
 Where:
 - `romPath`: Path to flash dump
-- `version`: Flash dump version, one of `dmc1`, `dmc2`, `dmc3`, `dmc4`, `dmc5`, `dmcmh`, `dmcgz`
-  for Digimon Color versions, and `penc1`, `penc2`, `penc3`, `penc4`, `penc5`,
-  `penc0`, `penc6`, `penc7` for Pendulum Color versions
+- `version`: Flash dump version, one of `dmc1`, `dmc2`, `dmc3`, `dmc4`, `dmc5`,
+  `dmcmh`, `dmcgz` for Digimon Color versions, and `penc1`, `penc2`, `penc3`,
+  `penc4`, `penc5`, `penc0`, `penc6`, `penc7` for Pendulum Color versions
 - `outDir`: The directory to export into
 
-Files are exported as PNG files into `outDir` with transparent background.
-You can export with green background by using the `-g` option, and to BMP with
-the `--bmp` option.
+Files are exported as PNG files into `outDir` with transparent background. You
+can export with green background by using the `-g` option, and to BMP with the
+`--bmp` option.
 
 ### Import sprites
 
@@ -34,12 +34,12 @@ the `--bmp` option.
 DigimonColorSpriteTool.exe import-preset [options] <romPath> <version> <inDir> [<outFile>]
 ```
 
-`inDir` is a path to the folder that contains the sprites to import. You
-only need to provide the sprites you want to overwrite, named with the correct
-index. `outFile` is the path to the repacked ROM file. If omitted, the
-original file will be overwritten. Use the `-g` option if your backgrounds are
-green. Otherwise, any pure green pixels will be slightly adjusted so they show
-up as green on-device. BMPs will be imported with the `-g` option applied.
+`inDir` is a path to the folder that contains the sprites to import. You only
+need to provide the sprites you want to overwrite, named with the correct index.
+`outFile` is the path to the repacked ROM file. If omitted, the original file
+will be overwritten. Use the `-g` option if your backgrounds are green.
+Otherwise, any pure green pixels will be slightly adjusted so they show up as
+green on-device. BMPs will be imported with the `-g` option applied.
 
 ### Export sprite sheet
 
@@ -88,12 +88,11 @@ is available for sprite sheet related commands: `export-sheets-preset`,
 
 ### Cut-ins
 
-For devices that support cut-ins, they are placed after regular sprites and
-also after special sprites. If the character is not special, the exported name
-for sprite sheets will have the character index plus `_cutin` appended for the
-name. If the character is special, the above applies, plus an additional
-0-based index is added to the name, which corresponds to its location within
-the sprite order.
+For devices that support cut-ins, they are placed after regular sprites and also
+after special sprites. If the character is not special, the exported name for
+sprite sheets will have the character index plus `_cutin` appended for the name.
+If the character is special, the above applies, plus an additional 0-based index
+is added to the name, which corresponds to its location within the sprite order.
 
 Example: for a special character with index `0`, you will get `0.png`,
 `0_cutin0.png`, and `0_cutin1.png`.
