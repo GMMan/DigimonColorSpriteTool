@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <Title>Digimon Color Sprite Import/Export Tool</Title>
 	<Authors>cyanic</Authors>
-	<VersionPrefix>2.3.1</VersionPrefix>
+	<VersionPrefix>2.3.2</VersionPrefix>
 	<RepositoryUrl>https://github.com/GMMan/DigimonColorSpriteTool</RepositoryUrl>
 	<PackageReadmeFile>README.md</PackageReadmeFile>
 	<Product>$(Title)</Product>

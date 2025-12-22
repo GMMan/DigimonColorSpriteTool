@@ -271,9 +271,13 @@ namespace DigimonColorSpriteTool
                     case ImageType.Cutin:
                         {
                             string cutinName = CUTIN_SUFFIX;
-                            if (isSpecial && !firmwareInfo.OmitSpecialCutin)
+                            if (isSpecial)
                             {
-                                cutinName += cutinIndex++;
+                                if (!firmwareInfo.OmitSpecialCutin)
+                                {
+                                    cutinName += cutinIndex;
+                                }
+                                ++cutinIndex;
                             }
                             string cutinPath = $"{Path.ChangeExtension(path, null)}{cutinName}{Path.GetExtension(path)}";
                             if (File.Exists(cutinPath))
@@ -362,9 +366,13 @@ namespace DigimonColorSpriteTool
                     case ImageType.Cutin:
                         {
                             string cutinName = CUTIN_SUFFIX;
-                            if (isSpecial && !firmwareInfo.OmitSpecialCutin)
+                            if (isSpecial)
                             {
-                                cutinName += cutinIndex++;
+                                if (!firmwareInfo.OmitSpecialCutin)
+                                {
+                                    cutinName += cutinIndex;
+                                }
+                                ++cutinIndex;
                             }
                             using var cutinSprite = GetImage(imageInfos[startImageIndex + i], useGreenAsAlpha);
                             cutinSprite.Save($"{basePath}{cutinName}{extension}");
